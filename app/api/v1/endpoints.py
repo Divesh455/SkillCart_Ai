@@ -136,7 +136,7 @@ def resolve_generated_resume(res_id: str) -> GenResumeSchema:
 # Request Schemas for APIs
 # =====================================================================
 class ResumeParseRequest(BaseModel):
-    resume_url: str
+    file_bytes: bytes
 
 class EvaluateRequest(BaseModel):
     res_id: str
@@ -289,18 +289,34 @@ def _build_job_description(job: dict) -> str:
 # =====================================================================
 
 @router.post("/resume/parse", response_model=ApiResponse)
-async def parse_resume_endpoint(request: ResumeParseRequest):
-    
-    response = requests.get(request.resume_url)
-    response.raise_for_status()
+async def parse_resume_endpoint(request: Request):
 
-    file_bytes = response.content
+    # Receive raw PDF/DOCX bytes
+    file_bytes = await request.body()
 
-    filename = os.path.basename(urlparse(request.resume_url).path)
-    if not filename:
+    if not file_bytes:
+        return success_response(
+            message="No resume bytes received.",
+            data=None
+        )
+
+    # Detect file type from bytes
+    if file_bytes.startswith(b"%PDF"):
         filename = "resume.pdf"
+    elif file_bytes.startswith(b"PK"):
+        # DOCX is a ZIP-based file
+        filename = "resume.docx"
+    else:
+        return success_response(
+            message="Unsupported or invalid resume file.",
+            data=None
+        )
 
-    raw_text = extract_text_from_file(filename, file_bytes)
+    # Extract text
+    raw_text = extract_text_from_file(
+        filename,
+        file_bytes
+    )
 
     if not _is_parse_resume_like_text(raw_text):
         return success_response(
@@ -308,17 +324,17 @@ async def parse_resume_endpoint(request: ResumeParseRequest):
             data=None
         )
 
+    # Gemini parsing
     result = await ResumeIntelligenceService.parse_resume(raw_text)
 
     if not _has_parse_resume_structure(result):
         return success_response(
             message="Uploaded file does not appear to be a resume.",
-            data=None         
+            data=None
         )
 
     return success_response(
-        data=result.model_dump(mode="json"),
-        message="Resume parsed successfully"
+        data=result.model_dump(mode="json")
     )
 
 
