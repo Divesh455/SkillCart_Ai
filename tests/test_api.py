@@ -1,10 +1,11 @@
-from fastapi.testclient import TestClient
+﻿from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
 import pytest
 import requests
 from app.main import app
 from app.ai.services.models import (
     ResumeSchema, 
+    GenResumeSchema,
     ContactDetails, 
     SkillCategory,
     ResumeEvaluationSchema, 
@@ -136,7 +137,7 @@ def test_generate_resume_endpoint():
         ]
     }
 
-    polished_resume = ResumeSchema(
+    polished_resume = GenResumeSchema(
         name="John Doe",
         contact=ContactDetails(
             email="john@example.com",
@@ -151,7 +152,7 @@ def test_generate_resume_endpoint():
         certifications=[]
     )
 
-    with patch("app.api.v1.endpoints.ResumeGenerationService.improve_resume", return_value=polished_resume) as mock_improve, \
+    with patch("app.api.v1.endpoints.ResumeGenerationService.improve_gen_resume", return_value=polished_resume) as mock_improve, \
          patch("app.api.v1.endpoints.save_resume_data") as mock_save:
         response = client.post("/api/v1/resume/generate", json=payload)
 
@@ -180,9 +181,18 @@ def test_generate_resume_endpoint_missing_parameters():
     assert json_data["success"] is False
     assert "validation failed" in json_data["message"].lower()
 
-def test_download_resume_endpoint(dummy_resume):
-    with patch("app.api.v1.endpoints.get_resume_data", return_value=dummy_resume.model_dump(mode="json")):
-        response = client.get(f"/api/v1/resume/{dummy_resume.res_id}/download")
+def test_download_resume_endpoint():
+    generated_resume = GenResumeSchema(
+        name="John Doe",
+        contact=ContactDetails(email="john@example.com", phone="12345678", location="New York, NY"),
+        education=[],
+        experience=[],
+        projects=[],
+        skills=[],
+        certifications=[]
+    )
+    with patch("app.api.v1.endpoints.get_resume_data", return_value=generated_resume.model_dump(mode="json")):
+        response = client.get(f"/api/v1/resume/{generated_resume.res_id}/download")
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith(

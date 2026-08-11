@@ -1,4 +1,4 @@
-from typing import Optional, List
+﻿from typing import Optional, List
 import anyio
 import json
 import requests
@@ -28,7 +28,8 @@ from app.ai.services.models import (
     ChatResponseSchema, 
     ChatMessage,
     ChatRequest,
-    ResumeAnalysisReportSchema
+    ResumeAnalysisReportSchema,
+    GenResumeSchema
 )
 from app.ai.services.resume_intel import ResumeIntelligenceService
 from app.ai.services.resume_generate import ResumeGenerationService
@@ -39,7 +40,7 @@ from app.ai.services.interview import InterviewIntelligenceService
 from app.ai.services.copilot import CareerCopilotService
 from app.ai.services.resume_analyze import ResumeAnalysisService
 from app.utils.document_parsers import extract_text_from_file
-from app.utils.resume_export import build_resume_docx
+from app.utils.resume_export import build_gen_resume_docx
 from app.core.db import save_resume_data, get_resume_data
 from app.core.exceptions import SkillCartException
 from app.core.railway_client import railway_client
@@ -90,6 +91,46 @@ def resolve_resume(res_id: str) -> ResumeSchema:
             message=f"Failed to parse database resume data for ID '{res_id}': {str(e)}",
             status_code=422
         )
+        
+def resolve_generated_resume(res_id: str) -> GenResumeSchema:
+    """Resolve GenResumeSchema from database res_id."""
+    if not res_id:
+        raise SkillCartException(
+            message="'res_id' must be provided.",
+            status_code=400
+        )
+
+    is_numeric_resume_id = str(res_id).strip().isdigit()
+    try:
+        data = get_resume_ai_response_data(res_id)
+    except ValueError as e:
+        raise SkillCartException(
+            message="Resume AI database is not configured.",
+            status_code=500,
+            errors=str(e)
+        )
+    except Exception as e:
+        raise SkillCartException(
+            message=f"Failed to fetch resume AI data for ID '{res_id}'.",
+            status_code=502,
+            errors=str(e)
+        )
+
+    if data is None and not is_numeric_resume_id:
+        data = get_resume_data(res_id)
+
+    if not data:
+        raise SkillCartException(
+            message=f"Resume with ID '{res_id}' not found in the database.",
+            status_code=404
+        )
+    try:
+        return GenResumeSchema(**data)
+    except Exception as e:
+        raise SkillCartException(
+            message=f"Failed to parse database resume data for ID '{res_id}': {str(e)}",
+            status_code=422
+        )
 
 # =====================================================================
 # Request Schemas for APIs
@@ -101,14 +142,6 @@ class EvaluateRequest(BaseModel):
     res_id: str
     job_id:str
 
-class GenerateResumeRequest(BaseModel):
-    name: str
-    contact: ContactDetails = Field(default_factory=ContactDetails)
-    education: List[EducationItem] = Field(default_factory=list)
-    experience: List[ExperienceItem] = Field(default_factory=list)
-    projects: List[ProjectItem] = Field(default_factory=list)
-    skills: List[SkillCategory] = Field(default_factory=list)
-    certifications: List[CertificationItem] = Field(default_factory=list)
 
 class MatchRequest(BaseModel):
     res_id: str
@@ -147,7 +180,7 @@ def _format_job_list(title: str, items: Optional[List[str]]) -> Optional[str]:
     return f"{title}: " + ", ".join(values)
 
 
-def _is_resume_like_text(raw_text: str) -> bool:
+def _is_parse_resume_like_text(raw_text: str) -> bool:
     text = (raw_text or "").lower()
     if len(text.strip()) < 30:
         return False
@@ -175,7 +208,7 @@ def _is_resume_like_text(raw_text: str) -> bool:
     return sum(1 for signal in signals if signal in text) >= 2
 
 
-def _has_parsed_resume_structure(resume: ResumeSchema) -> bool:
+def _has_parse_resume_structure(resume: ResumeSchema) -> bool:
     name = (resume.name or "").strip().lower()
     if not name or name in {"unknown", "not provided", "n/a", "none"}:
         return False
@@ -269,7 +302,7 @@ async def parse_resume_endpoint(request: ResumeParseRequest):
 
     raw_text = extract_text_from_file(filename, file_bytes)
 
-    if not _is_resume_like_text(raw_text):
+    if not _is_parse_resume_like_text(raw_text):
         return success_response(
             message="Uploaded file does not appear to be a resume.",
             data=None
@@ -277,7 +310,7 @@ async def parse_resume_endpoint(request: ResumeParseRequest):
 
     result = await ResumeIntelligenceService.parse_resume(raw_text)
 
-    if not _has_parsed_resume_structure(result):
+    if not _has_parse_resume_structure(result):
         return success_response(
             message="Uploaded file does not appear to be a resume.",
             data=None         
@@ -290,7 +323,7 @@ async def parse_resume_endpoint(request: ResumeParseRequest):
 
 
 @router.post("/resume/generate", response_model=ApiResponse)
-async def generate_resume_endpoint(req: GenerateResumeRequest, request: Request):
+async def generate_resume_endpoint(req: ResumeSchema, request: Request):
     """Generate a structured resume from user-entered fields and save it."""
     name = req.name.strip()
     if not name:
@@ -299,16 +332,8 @@ async def generate_resume_endpoint(req: GenerateResumeRequest, request: Request)
             status_code=400
         )
 
-    draft_resume = ResumeSchema(
-        name=name,
-        contact=req.contact,
-        education=req.education,
-        experience=req.experience,
-        projects=req.projects,
-        skills=req.skills,
-        certifications=req.certifications
-    )
-    resume = await ResumeGenerationService.improve_resume(draft_resume)
+    draft_resume = req.model_copy(update={"name": name})
+    resume = await ResumeGenerationService.improve_gen_resume(draft_resume)
     parsed_dict = resume.model_dump(mode="json")
 
     save_resume_data(
@@ -327,9 +352,9 @@ async def generate_resume_endpoint(req: GenerateResumeRequest, request: Request)
 
     return success_response(
         data={
-            # "res_id": str(resume.res_id),
-            # "parsed_data": parsed_dict,
-            # "resume": parsed_dict,
+            "res_id": str(resume.res_id),
+            "parsed_data": parsed_dict,
+            "resume": parsed_dict,
             "download_url": download_url
         },
         message="Resume generated successfully"
@@ -339,8 +364,8 @@ async def generate_resume_endpoint(req: GenerateResumeRequest, request: Request)
 @router.get("/resume/{res_id}/download")
 async def download_resume_endpoint(res_id: str):
     """Download a stored resume as a DOCX document."""
-    resume = resolve_resume(res_id)
-    document_bytes = await anyio.to_thread.run_sync(build_resume_docx, resume)
+    resume = resolve_generated_resume(res_id)
+    document_bytes = await anyio.to_thread.run_sync(build_gen_resume_docx, resume)
     filename = _resume_download_filename(resume.name)
 
     return StreamingResponse(

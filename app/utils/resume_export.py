@@ -1,16 +1,15 @@
-from io import BytesIO
+﻿from io import BytesIO
 
 from docx import Document
 
-from app.ai.services.models import ResumeSchema
+from app.ai.services.models import GenResumeSchema, ResumeSchema
 
 
 def _join_non_empty(parts: list[str], separator: str = " | ") -> str:
     return separator.join(part for part in parts if part)
 
 
-def build_resume_docx(resume: ResumeSchema) -> bytes:
-    """Render a ResumeSchema into a downloadable DOCX document."""
+def _render_resume_docx(resume: ResumeSchema | GenResumeSchema) -> bytes:
     document = Document()
 
     document.add_heading(resume.name, level=0)
@@ -102,3 +101,13 @@ def build_resume_docx(resume: ResumeSchema) -> bytes:
     output = BytesIO()
     document.save(output)
     return output.getvalue()
+
+
+def build_resume_docx(resume: ResumeSchema) -> bytes:
+    """Render a parsed ResumeSchema into a DOCX document."""
+    return _render_resume_docx(resume)
+
+
+def build_gen_resume_docx(resume: GenResumeSchema) -> bytes:
+    """Render a generated GenResumeSchema into a downloadable DOCX document."""
+    return _render_resume_docx(resume)

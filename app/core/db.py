@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from typing import Optional
-from sqlalchemy import create_engine, Column, String, Text, DateTime, Integer, ForeignKey
+from sqlalchemy import create_engine, Column, String, Text, DateTime, Integer, ForeignKey, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 import datetime
 
@@ -122,9 +122,26 @@ def get_engine():
     return _engine
 
 def init_db() -> None:
-    """Initialize the database schema, creating tables if they do not exist."""
+    """Initialize the database schema, creating tables if they do not exist and adding missing columns."""
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
+    
+    try:
+        inspector = inspect(engine)
+        with engine.begin() as conn:
+            for table_name, table in Base.metadata.tables.items():
+                if inspector.has_table(table_name):
+                    existing_columns = {col['name'] for col in inspector.get_columns(table_name)}
+                    for column in table.columns:
+                        if column.name not in existing_columns:
+                            type_str = column.type.compile(engine.dialect)
+                            nullable_str = "NULL" if column.nullable else "NOT NULL"
+                            sql = text(f"ALTER TABLE `{table_name}` ADD COLUMN `{column.name}` {type_str} {nullable_str}")
+                            logger.info(f"Adding missing column '{column.name}' to table '{table_name}'")
+                            conn.execute(sql)
+    except Exception as e:
+        logger.warning(f"Could not auto-add missing columns during init_db: {e}")
+
     logger.info("Database initialized successfully.")
 
 def get_db_session():

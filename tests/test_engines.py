@@ -1,7 +1,8 @@
-import pytest
+﻿import pytest
 from unittest.mock import MagicMock, patch
 from app.ai.services.models import (
     ResumeSchema, 
+    GenResumeSchema,
     ContactDetails,
     ResumeEvaluationSchema, 
     ATSAnalysis,
@@ -93,12 +94,25 @@ async def test_resume_intelligence_service(dummy_resume):
 
 
 @pytest.mark.asyncio
-async def test_resume_generation_service(dummy_resume):
+async def test_resume_generation_service():
+    dummy_gen_resume = GenResumeSchema(
+        name="John Doe",
+        contact=ContactDetails(
+            email="john@example.com",
+            phone="12345678",
+            location="New York, NY"
+        ),
+        education=[],
+        experience=[],
+        projects=[],
+        skills=[],
+        certifications=[]
+    )
     mock_provider = MagicMock()
-    mock_provider.generate_structured_output.return_value = dummy_resume
+    mock_provider.generate_structured_output.return_value = dummy_gen_resume
 
     with patch("app.ai.services.resume_generate.GeminiProvider", return_value=mock_provider):
-        result = await ResumeGenerationService.improve_resume(dummy_resume)
+        result = await ResumeGenerationService.improve_gen_resume(dummy_gen_resume)
         assert result.name == "John Doe"
         assert result.contact.email == "john@example.com"
         mock_provider.generate_structured_output.assert_called_once()

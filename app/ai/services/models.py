@@ -1,7 +1,6 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
-import uuid
-
+from uuid import UUID, uuid4
 
 # =====================================================================
 # Engine 1: Resume Intelligence Engine Models
@@ -47,6 +46,16 @@ class CertificationItem(BaseModel):
     url: Optional[str] = Field(None, description="Credential ID or credential link")
 
 class ResumeSchema(BaseModel):
+    name: str = Field(..., description="Candidate's full name")
+    contact: ContactDetails = Field(..., description="Candidate contact methods and social links")
+    education: List[EducationItem] = Field(default_factory=list, description="Academic records list")
+    experience: List[ExperienceItem] = Field(default_factory=list, description="Professional experience timeline list")
+    projects: List[ProjectItem] = Field(default_factory=list, description="Key projects list")
+    skills: List[SkillCategory] = Field(default_factory=list, description="Categorized list of skills")
+    certifications: List[CertificationItem] = Field(default_factory=list, description="Professional certifications list")
+    
+class GenResumeSchema(BaseModel):
+    res_id : UUID = Field(default_factory=uuid4)
     name: str = Field(..., description="Candidate's full name")
     contact: ContactDetails = Field(..., description="Candidate contact methods and social links")
     education: List[EducationItem] = Field(default_factory=list, description="Academic records list")

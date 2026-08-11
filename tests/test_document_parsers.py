@@ -4,7 +4,7 @@ from app.utils.document_parsers import parse_pdf, parse_docx, extract_text_from_
 from app.core.exceptions import DocumentParsingException
 
 def test_parse_pdf_success():
-    with patch("fitz.open") as mock_open:
+    with patch("pymupdf.open") as mock_open:
         mock_doc = MagicMock()
         mock_page = MagicMock()
         mock_page.get_text.return_value = "John Doe\nSkills: Python, FastAPI"
@@ -17,7 +17,7 @@ def test_parse_pdf_success():
         mock_doc.close.assert_called_once()
 
 def test_parse_pdf_empty():
-    with patch("fitz.open") as mock_open:
+    with patch("pymupdf.open") as mock_open:
         mock_doc = MagicMock()
         mock_page = MagicMock()
         mock_page.get_text.return_value = ""

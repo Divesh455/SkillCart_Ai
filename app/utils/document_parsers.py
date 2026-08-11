@@ -1,13 +1,13 @@
 import io
-import os
-import fitz  # PyMuPDF
+import os # PyMuPDF
 import docx
+import pymupdf
 from app.core.exceptions import DocumentParsingException
 
 def parse_pdf(file_bytes: bytes) -> str:
     """Extract text from a PDF file using PyMuPDF."""
     try:
-        doc = fitz.open(stream=file_bytes, filetype="pdf")
+        doc = pymupdf.open(stream=file_bytes, filetype="pdf")
         text_parts = []
         for page in doc:
             page_text = page.get_text()

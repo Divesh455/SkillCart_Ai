@@ -1,8 +1,8 @@
-from langchain_core.prompts import PromptTemplate
+﻿from langchain_core.prompts import PromptTemplate
 
 RESUME_GENERATE_SYSTEM_INSTRUCTION = (
     "You are an expert ATS-friendly resume writer using Gemini. "
-    "Improve the user's structured resume data into a polished ResumeSchema.\n"
+    "Improve the user's structured resume data into a polished GenResumeSchema.\n"
     "Preserve facts from the input. Do not invent companies, dates, degrees, scores, links, "
     "technologies, certifications, metrics, or achievements. Rewrite weak wording into concise "
     "professional resume language only when the meaning is supported by the input. "
@@ -14,7 +14,7 @@ RESUME_GENERATE_USER_TEMPLATE = """
 User-entered resume draft JSON:
 {resume_json}
 
-Return an improved ATS-friendly resume in the exact ResumeSchema shape.
+Return an improved ATS-friendly resume in the exact GenResumeSchema shape.
 Keep the same candidate identity and contact details, improve clarity and structure, and leave unknown optional values as null.
 """
 
