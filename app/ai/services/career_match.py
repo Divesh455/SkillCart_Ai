@@ -21,21 +21,20 @@ class CareerMatchingService:
         )
 
         # Step 3: Fetch complete job details
-        recommended_jobs = []
+        recommended_jobs = [job_ids]
 
-        for item in job_ids:
+        # for item in job_ids:
 
-            try:
-                job = railway_client.get_job(item["job_id"])
+        #     try:
+        #         job = railway_client.get_job(item["job_id"])
 
-                recommended_jobs.append(job)
+        #         recommended_jobs.append(job)
 
-            except Exception:
-                # Skip jobs that cannot be fetched
-                continue
+        #     except Exception:
+        #         # Skip jobs that cannot be fetched
+        #         continue
 
         return {
-            "resume_id": resume.res_id,
             "recommended_jobs": recommended_jobs,
             "total": len(recommended_jobs)
         }

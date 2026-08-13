@@ -40,23 +40,31 @@ def _decode_json(value: Any) -> Any:
 def _extract_resume_payload(value: Any) -> Optional[dict]:
     payload = _decode_json(value)
 
-    while isinstance(payload, dict):
-        if "name" in payload and "contact" in payload:
-            return payload
+    if not isinstance(payload, dict):
+        return None
 
-        for key in ("parsed_data", "resume", "data", "ai_response_json"):
-            nested = payload.get(key)
-            if nested:
-                payload = _decode_json(nested)
-                break
-        else:
-            return payload
+    # Your parsed_json structure:
+    # {
+    #     "success": true,
+    #     "message": "Success",
+    #     "data": {
+    #         "name": "...",
+    #         "contact": {...}
+    #     }
+    # }
+
+    if isinstance(payload.get("data"), dict):
+        return payload["data"]
+
+    # Fallback if the JSON is already in ResumeSchema format
+    if "name" in payload and "contact" in payload:
+        return payload
 
     return None
 
 
 def get_resume_ai_response_data(res_id: str) -> Optional[dict]:
-    """Fetch only ai_response_json for a numeric resume_id from Railway Postgres."""
+    """Fetch only parsed_json for a numeric resume_id from Railway Postgres."""
     try:
         resume_id = int(str(res_id).strip())
     except (TypeError, ValueError):
@@ -64,24 +72,24 @@ def get_resume_ai_response_data(res_id: str) -> Optional[dict]:
 
     query = text(
         """
-        SELECT ai_response_json
-        FROM public.resume
-        WHERE resume_id = :resume_id
+        SELECT parsed_json
+        FROM public.resume_entity
+        WHERE id = :resume_id
         LIMIT 1
         """
     )
 
     try:
         with _get_engine().connect() as connection:
-            ai_response_json = connection.execute(
+            parsed_json = connection.execute(
                 query,
                 {"resume_id": resume_id}
             ).scalar_one_or_none()
     except Exception as exc:
-        logger.error("Failed to fetch ai_response_json for resume_id %s: %s", resume_id, exc)
+        logger.error("Failed to fetch parsed_json for resume_id %s: %s", resume_id, exc)
         raise
 
-    if not ai_response_json:
+    if not parsed_json:
         return None
 
-    return _extract_resume_payload(ai_response_json)
+    return _extract_resume_payload(parsed_json)
