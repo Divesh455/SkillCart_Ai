@@ -38,6 +38,10 @@ def create_app() -> FastAPI:
     def health_check():
         """Basic health check endpoint."""
         return {"status": "healthy", "provider": settings.LLM_PROVIDER}
+    
+    @app.head("/health")
+    def health_head():
+        return {"status": "ok"}
 
     return app
 
