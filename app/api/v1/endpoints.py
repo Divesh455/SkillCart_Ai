@@ -482,17 +482,11 @@ async def guidance_endpoint(req: GuidanceRequest):
     result = await CareerCopilotService.generate_guidance(resume, req.evaluation, req.match)
     return success_response(data=result, message="Career guidance report generated successfully")
 
-
 @router.post("/copilot/chat", response_model=ApiResponse)
 async def chat_endpoint(req: ChatRequest):
-    """Chat interactively with the Career Copilot using context."""
-    resume = None
-    if req.res_id:
-        resume = resolve_resume(req.res_id)
+    """Chat interactively with the Career Copilot using query."""
     result = await CareerCopilotService.chat(
-        message=req.message,
-        history=req.history,
-        resume=resume,
-        career_match=req.career_match
+        query=req.query
     )
     return success_response(data=result, message="Copilot response generated successfully")
+

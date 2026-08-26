@@ -184,10 +184,7 @@ class ChatMessage(BaseModel):
     content: str = Field(..., description="Message text content")
 
 class ChatRequest(BaseModel):
-    history: List[ChatMessage] = Field(default_factory=list, description="Previous message exchanges in the thread")
-    message: str = Field(..., description="The current user query")
-    res_id: Optional[str] = Field(None, description="Optional parsed resume database ID")
-    career_match: Optional[CareerMatchSchema] = Field(None, description="Optional job matching context")
+    query: str = Field(..., description="The user query")
 
 class ChatResponseSchema(BaseModel):
     response: str = Field(..., description="The conversational AI response")

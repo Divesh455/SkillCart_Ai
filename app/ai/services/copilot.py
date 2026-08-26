@@ -17,30 +17,18 @@ from app.ai.prompts.copilot import (
 
 class CareerCopilotService:
     @staticmethod
-    async def generate_guidance(
-        resume: ResumeSchema, 
-        evaluation: ResumeEvaluationSchema, 
-        match: CareerMatchSchema
-    ) -> CareerGuidanceReportSchema:
-        """Consumes findings from previous engines to build a comprehensive Career Guidance Report."""
+    async def chat(
+        query: str
+    ) -> str:
+        """Engage in interactive career guidance chat using the user's query."""
         provider = LLMProviderFactory.get_provider()
         
-        resume_json = resume.model_dump_json(indent=2)
-        evaluation_json = evaluation.model_dump_json(indent=2)
-        match_json = match.model_dump_json(indent=2)
-        
-        prompt = COPILOT_REPORT_PROMPT.format(
-            resume_json=resume_json,
-            evaluation_json=evaluation_json,
-            match_json=match_json
-        )
-        
         return await anyio.to_thread.run_sync(
-            provider.generate_structured_output,
-            prompt,
-            CareerGuidanceReportSchema,
-            COPILOT_REPORT_SYSTEM_INSTRUCTION
+            provider.generate_text,
+            query,
+            COPILOT_CHAT_SYSTEM_INSTRUCTION
         )
+
 
     @staticmethod
     async def chat(

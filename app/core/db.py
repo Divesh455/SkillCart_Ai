@@ -66,7 +66,7 @@ class SkillRecord(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     res_id = Column(String(36), ForeignKey("resumes.res_id", ondelete="CASCADE"), index=True)
     category = Column(String(255), nullable=False)
-    skills = Column(Text, nullable=False)  # JSON-encoded list of strings
+    skills = Column(Text, nullable=False)  
 
 class CertificationRecord(Base):
     __tablename__ = "certifications"
