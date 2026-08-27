@@ -2,6 +2,7 @@
 import anyio
 import json
 import requests
+
 # pyrefly: ignore [missing-import]
 from fastapi import APIRouter, File, UploadFile, Depends, Request
 from fastapi.responses import StreamingResponse
@@ -18,18 +19,18 @@ from app.ai.services.models import (
     EducationItem,
     ExperienceItem,
     ProjectItem,
-    ResumeSchema, 
-    ResumeEvaluationSchema, 
-    CareerMatchSchema, 
-    CareerEnhancementSchema, 
-    InterviewPrepSchema, 
-    CareerGuidanceReportSchema, 
+    ResumeSchema,
+    ResumeEvaluationSchema,
+    CareerMatchSchema,
+    CareerEnhancementSchema,
+    InterviewPrepSchema,
+    CareerGuidanceReportSchema,
     SkillCategory,
-    ChatResponseSchema, 
+    ChatResponseSchema,
     ChatMessage,
     ChatRequest,
     ResumeAnalysisReportSchema,
-    GenResumeSchema
+    GenResumeSchema,
 )
 from app.ai.services.resume_intel import ResumeIntelligenceService
 from app.ai.services.resume_generate import ResumeGenerationService
@@ -52,13 +53,11 @@ router = APIRouter()
 # Helper to Resolve Resume (Database Lookup)
 # =====================================================================
 
+
 def resolve_resume(res_id: str) -> ResumeSchema:
     """Resolve ResumeSchema from database res_id."""
     if not res_id:
-        raise SkillCartException(
-            message="'res_id' must be provided.",
-            status_code=400
-        )
+        raise SkillCartException(message="'res_id' must be provided.", status_code=400)
 
     is_numeric_resume_id = str(res_id).strip().isdigit()
     try:
@@ -67,13 +66,13 @@ def resolve_resume(res_id: str) -> ResumeSchema:
         raise SkillCartException(
             message="Resume AI database is not configured.",
             status_code=500,
-            errors=str(e)
+            errors=str(e),
         )
     except Exception as e:
         raise SkillCartException(
             message=f"Failed to fetch resume AI data for ID '{res_id}'.",
             status_code=502,
-            errors=str(e)
+            errors=str(e),
         )
 
     if data is None and not is_numeric_resume_id:
@@ -82,23 +81,21 @@ def resolve_resume(res_id: str) -> ResumeSchema:
     if not data:
         raise SkillCartException(
             message=f"Resume with ID '{res_id}' not found in the database.",
-            status_code=404
+            status_code=404,
         )
     try:
         return ResumeSchema(**data)
     except Exception as e:
         raise SkillCartException(
             message=f"Failed to parse database resume data for ID '{res_id}': {str(e)}",
-            status_code=422
+            status_code=422,
         )
-        
+
+
 def resolve_generated_resume(res_id: str) -> GenResumeSchema:
     """Resolve GenResumeSchema from database res_id."""
     if not res_id:
-        raise SkillCartException(
-            message="'res_id' must be provided.",
-            status_code=400
-        )
+        raise SkillCartException(message="'res_id' must be provided.", status_code=400)
 
     is_numeric_resume_id = str(res_id).strip().isdigit()
     try:
@@ -107,13 +104,13 @@ def resolve_generated_resume(res_id: str) -> GenResumeSchema:
         raise SkillCartException(
             message="Resume AI database is not configured.",
             status_code=500,
-            errors=str(e)
+            errors=str(e),
         )
     except Exception as e:
         raise SkillCartException(
             message=f"Failed to fetch resume AI data for ID '{res_id}'.",
             status_code=502,
-            errors=str(e)
+            errors=str(e),
         )
 
     if data is None and not is_numeric_resume_id:
@@ -122,15 +119,16 @@ def resolve_generated_resume(res_id: str) -> GenResumeSchema:
     if not data:
         raise SkillCartException(
             message=f"Resume with ID '{res_id}' not found in the database.",
-            status_code=404
+            status_code=404,
         )
     try:
         return GenResumeSchema(**data)
     except Exception as e:
         raise SkillCartException(
             message=f"Failed to parse database resume data for ID '{res_id}': {str(e)}",
-            status_code=422
+            status_code=422,
         )
+
 
 # =====================================================================
 # Request Schemas for APIs
@@ -138,22 +136,26 @@ def resolve_generated_resume(res_id: str) -> GenResumeSchema:
 class ResumeParseRequest(BaseModel):
     file_bytes: bytes
 
+
 class EvaluateRequest(BaseModel):
     res_id: str
-    job_id:str
+    job_id: str
 
 
 class MatchRequest(BaseModel):
     res_id: str
     top_k: int = 10
-    
+
+
 class EnhanceRequest(BaseModel):
     res_id: str
     match_report: CareerMatchSchema
 
+
 class PrepareInterviewRequest(BaseModel):
     res_id: str
     job_description: Optional[str] = None
+
 
 class GuidanceRequest(BaseModel):
     res_id: str
@@ -163,8 +165,7 @@ class GuidanceRequest(BaseModel):
 
 def _resume_download_filename(name: str) -> str:
     cleaned = "".join(
-        char.lower() if char.isalnum() else "-"
-        for char in (name or "resume")
+        char.lower() if char.isalnum() else "-" for char in (name or "resume")
     ).strip("-")
 
     while "--" in cleaned:
@@ -247,17 +248,25 @@ def _build_job_description(job: dict) -> str:
         f"Company: {company['company_name']}" if company.get("company_name") else None,
         f"Department: {job['department']}" if job.get("department") else None,
         f"Project Role: {job['project_role']}" if job.get("project_role") else None,
-        f"Employment Type: {job['employment_type']}" if job.get("employment_type") else None,
+        (
+            f"Employment Type: {job['employment_type']}"
+            if job.get("employment_type")
+            else None
+        ),
         f"Work Mode: {job['work_mode']}" if job.get("work_mode") else None,
         f"Location: {job['location']}" if job.get("location") else None,
         (
             f"Experience Required: {experience_min}-{experience_max} years"
             if experience_min is not None and experience_max is not None
-            else f"Minimum Experience Required: {experience_min} years"
-            if experience_min is not None
-            else f"Maximum Experience Allowed: {experience_max} years"
-            if experience_max is not None
-            else None
+            else (
+                f"Minimum Experience Required: {experience_min} years"
+                if experience_min is not None
+                else (
+                    f"Maximum Experience Allowed: {experience_max} years"
+                    if experience_max is not None
+                    else None
+                )
+            )
         ),
         f"Education Requirement: {job['education']}" if job.get("education") else None,
         f"Role Summary: {job['summary']}" if job.get("summary") else None,
@@ -288,6 +297,7 @@ def _build_job_description(job: dict) -> str:
 # Endpoints
 # =====================================================================
 
+
 @router.post("/resume/parse", response_model=ApiResponse)
 async def parse_resume_endpoint(request: Request):
 
@@ -295,10 +305,7 @@ async def parse_resume_endpoint(request: Request):
     file_bytes = await request.body()
 
     if not file_bytes:
-        return success_response(
-            message="No resume bytes received.",
-            data=None
-        )
+        return success_response(message="No resume bytes received.", data=None)
 
     # Detect file type from bytes
     if file_bytes.startswith(b"%PDF"):
@@ -308,20 +315,15 @@ async def parse_resume_endpoint(request: Request):
         filename = "resume.docx"
     else:
         return success_response(
-            message="Unsupported or invalid resume file.",
-            data=None
+            message="Unsupported or invalid resume file.", data=None
         )
 
     # Extract text
-    raw_text = extract_text_from_file(
-        filename,
-        file_bytes
-    )
+    raw_text = extract_text_from_file(filename, file_bytes)
 
     if not _is_parse_resume_like_text(raw_text):
         return success_response(
-            message="Uploaded file does not appear to be a resume.",
-            data=None
+            message="Uploaded file does not appear to be a resume.", data=None
         )
 
     # Gemini parsing
@@ -329,13 +331,10 @@ async def parse_resume_endpoint(request: Request):
 
     if not _has_parse_resume_structure(result):
         return success_response(
-            message="Uploaded file does not appear to be a resume.",
-            data=None
+            message="Uploaded file does not appear to be a resume.", data=None
         )
 
-    return success_response(
-        data=result.model_dump(mode="json")
-    )
+    return success_response(data=result.model_dump(mode="json"))
 
 
 @router.post("/resume/generate", response_model=ApiResponse)
@@ -343,10 +342,7 @@ async def generate_resume_endpoint(req: ResumeSchema, request: Request):
     """Generate a structured resume from user-entered fields and save it."""
     name = req.name.strip()
     if not name:
-        raise SkillCartException(
-            message="'name' must be provided.",
-            status_code=400
-        )
+        raise SkillCartException(message="'name' must be provided.", status_code=400)
 
     draft_resume = req.model_copy(update={"name": name})
     resume = await ResumeGenerationService.improve_gen_resume(draft_resume)
@@ -356,14 +352,11 @@ async def generate_resume_endpoint(req: ResumeSchema, request: Request):
         res_id=str(resume.res_id),
         name=resume.name,
         raw_text=json.dumps(parsed_dict, indent=2),
-        parsed_data=parsed_dict
+        parsed_data=parsed_dict,
     )
 
     download_url = str(
-        request.url_for(
-            "download_resume_endpoint",
-            res_id=str(resume.res_id)
-        )
+        request.url_for("download_resume_endpoint", res_id=str(resume.res_id))
     )
 
     return success_response(
@@ -371,9 +364,9 @@ async def generate_resume_endpoint(req: ResumeSchema, request: Request):
             "res_id": str(resume.res_id),
             "parsed_data": parsed_dict,
             "resume": parsed_dict,
-            "download_url": download_url
+            "download_url": download_url,
         },
-        message="Resume generated successfully"
+        message="Resume generated successfully",
     )
 
 
@@ -387,9 +380,17 @@ async def download_resume_endpoint(res_id: str):
     return StreamingResponse(
         BytesIO(document_bytes),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"'
-        }
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/resume/{res_id}", response_model=ApiResponse)
+async def get_resume_data_endpoint(res_id: str):
+    """Retrieve the parsed resume data from the database by resume ID."""
+    resume = resolve_resume(res_id)
+    return success_response(
+        data=resume.model_dump(mode="json"),
+        message="Parsed resume data retrieved successfully",
     )
 
 
@@ -399,10 +400,10 @@ async def analyze_resume_endpoint(file: UploadFile = File(...)):
     file_bytes = await file.read()
     raw_text = extract_text_from_file(file.filename, file_bytes)
     resume = await ResumeIntelligenceService.parse_resume(raw_text)
-    
+
     # Perform detailed analysis strictly on resume content
     analysis = await ResumeAnalysisService.analyze_resume(resume)
-    
+
     return success_response(data=analysis, message="Resume analyzed successfully")
 
 
@@ -414,8 +415,7 @@ async def evaluate_resume_endpoint(req: EvaluateRequest):
         job_id = int(req.job_id.strip())
     except ValueError:
         raise SkillCartException(
-            message="'job_id' must be a valid integer.",
-            status_code=400
+            message="'job_id' must be a valid integer.", status_code=400
         )
 
     try:
@@ -423,19 +423,18 @@ async def evaluate_resume_endpoint(req: EvaluateRequest):
     except requests.HTTPError as exc:
         if exc.response is not None and exc.response.status_code == 404:
             raise SkillCartException(
-                message=f"Job with ID '{job_id}' not found.",
-                status_code=404
+                message=f"Job with ID '{job_id}' not found.", status_code=404
             )
         raise SkillCartException(
             message=f"Failed to fetch job details for job ID '{job_id}'.",
             status_code=502,
-            errors=str(exc)
+            errors=str(exc),
         )
     except requests.RequestException as exc:
         raise SkillCartException(
             message="Failed to connect to the jobs service.",
             status_code=502,
-            errors=str(exc)
+            errors=str(exc),
         )
 
     job_description = _build_job_description(job)
@@ -448,14 +447,10 @@ async def match_career_endpoint(req: MatchRequest):
 
     resume = resolve_resume(req.res_id)
 
-    result = await CareerMatchingService.match_career(
-        resume=resume,
-        top_k=req.top_k
-    )
+    result = await CareerMatchingService.match_career(resume=resume, top_k=req.top_k)
 
     return success_response(
-        data=result,
-        message="Recommended jobs fetched successfully"
+        data=result, message="Recommended jobs fetched successfully"
     )
 
 
@@ -464,29 +459,39 @@ async def enhance_career_endpoint(req: EnhanceRequest):
     """Generate Resume Flex bullets, cover letter, and a milestone learning roadmap."""
     resume = resolve_resume(req.res_id)
     result = await CareerEnhancementService.enhance_career(resume, req.match_report)
-    return success_response(data=result, message="Career enhancement package generated successfully")
+    return success_response(
+        data=result, message="Career enhancement package generated successfully"
+    )
 
 
 @router.post("/interview/prepare", response_model=ApiResponse)
 async def prepare_interview_endpoint(req: PrepareInterviewRequest):
     """Generate tailored interview prep questions (Technical, HR, behavioral, coding, company)."""
     resume = resolve_resume(req.res_id)
-    result = await InterviewIntelligenceService.prepare_interview(resume, req.job_description)
-    return success_response(data=result, message="Interview preparation questions generated successfully")
+    result = await InterviewIntelligenceService.prepare_interview(
+        resume, req.job_description
+    )
+    return success_response(
+        data=result, message="Interview preparation questions generated successfully"
+    )
 
 
 @router.post("/copilot/guidance", response_model=ApiResponse)
 async def guidance_endpoint(req: GuidanceRequest):
     """Ingest evaluation and match data to build a strategic Career Guidance Report."""
     resume = resolve_resume(req.res_id)
-    result = await CareerCopilotService.generate_guidance(resume, req.evaluation, req.match)
-    return success_response(data=result, message="Career guidance report generated successfully")
+    result = await CareerCopilotService.generate_guidance(
+        resume, req.evaluation, req.match
+    )
+    return success_response(
+        data=result, message="Career guidance report generated successfully"
+    )
+
 
 @router.post("/copilot/chat", response_model=ApiResponse)
 async def chat_endpoint(req: ChatRequest):
     """Chat interactively with the Career Copilot using query."""
-    result = await CareerCopilotService.chat(
-        query=req.query
+    result = await CareerCopilotService.chat(query=req.query)
+    return success_response(
+        data=result, message="Copilot response generated successfully"
     )
-    return success_response(data=result, message="Copilot response generated successfully")
-
