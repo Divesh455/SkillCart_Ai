@@ -499,14 +499,13 @@ async def chat_endpoint(req: ChatRequest):
     """Chat interactively with the Career Copilot using query and optional resume context."""
     resume_data = None
     if req.res_id:
-        resume_data = get_resume_ai_response_data(req.res_id)
-        if not resume_data:
-            resume_data = get_resume_data(req.res_id)
-        if not resume_data:
-            raise SkillCartException(
-                message=f"Resume with ID '{req.res_id}' not found in the database.",
-                status_code=404
-            )
+        try:
+            resume_data = get_resume_ai_response_data(req.res_id)
+            if not resume_data:
+                resume_data = get_resume_data(req.res_id)
+        except Exception:
+            # Gracefully ignore any DB lookup errors and proceed without resume context
+            resume_data = None
             
     result = await CareerCopilotService.chat(
         query=req.query,
@@ -515,4 +514,3 @@ async def chat_endpoint(req: ChatRequest):
     return success_response(
         data=result, message="Copilot response generated successfully"
     )
-
