@@ -386,11 +386,17 @@ async def download_resume_endpoint(res_id: str):
 
 @router.get("/resume/{res_id}", response_model=ApiResponse)
 async def get_resume_data_endpoint(res_id: str):
-    """Retrieve the parsed resume data from the database by resume ID."""
-    resume = resolve_resume(res_id)
+    """Retrieve the extracted parsed resume data from the database by resume ID."""
+    data = get_resume_ai_response_data(res_id)
+    if not data:
+        raise SkillCartException(
+            message=f"Resume with ID '{res_id}' not found in the database.",
+            status_code=404
+        )
+        
     return success_response(
-        data=resume.model_dump(mode="json"),
-        message="Parsed resume data retrieved successfully",
+        data=data,
+        message="Parsed resume data retrieved successfully"
     )
 
 

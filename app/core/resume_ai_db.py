@@ -93,3 +93,34 @@ def get_resume_ai_response_data(res_id: str) -> Optional[dict]:
         return None
 
     return _extract_resume_payload(parsed_json)
+
+def get_raw_parsed_json(res_id: str) -> Optional[dict]:
+    """Fetch the raw parsed_json for a resume_id from the database."""
+    try:
+        resume_id = int(str(res_id).strip())
+    except (TypeError, ValueError):
+        return None
+
+    query = text(
+        """
+        SELECT parsed_json
+        FROM public.resume_entity
+        WHERE id = :resume_id
+        LIMIT 1
+        """
+    )
+
+    try:
+        with _get_engine().connect() as connection:
+            parsed_json = connection.execute(
+                query,
+                {"resume_id": resume_id}
+            ).scalar_one_or_none()
+    except Exception as exc:
+        logger.error("Failed to fetch raw parsed_json for resume_id %s: %s", resume_id, exc)
+        raise
+
+    if not parsed_json:
+        return None
+
+    return _decode_json(parsed_json)
