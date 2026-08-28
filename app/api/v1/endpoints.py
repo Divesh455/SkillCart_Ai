@@ -496,8 +496,23 @@ async def guidance_endpoint(req: GuidanceRequest):
 
 @router.post("/copilot/chat", response_model=ApiResponse)
 async def chat_endpoint(req: ChatRequest):
-    """Chat interactively with the Career Copilot using query."""
-    result = await CareerCopilotService.chat(query=req.query)
+    """Chat interactively with the Career Copilot using query and optional resume context."""
+    resume_data = None
+    if req.res_id:
+        resume_data = get_resume_ai_response_data(req.res_id)
+        if not resume_data:
+            resume_data = get_resume_data(req.res_id)
+        if not resume_data:
+            raise SkillCartException(
+                message=f"Resume with ID '{req.res_id}' not found in the database.",
+                status_code=404
+            )
+            
+    result = await CareerCopilotService.chat(
+        query=req.query,
+        resume_data=resume_data
+    )
     return success_response(
         data=result, message="Copilot response generated successfully"
     )
+

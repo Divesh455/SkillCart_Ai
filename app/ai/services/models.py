@@ -185,6 +185,8 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     query: str = Field(..., description="The user query")
+    res_id: Optional[str] = Field(None, description="Optional parsed resume database ID")
+
 
 class ChatResponseSchema(BaseModel):
     response: str = Field(..., description="The conversational AI response")
