@@ -8,22 +8,35 @@ class InterviewIntelligenceService:
     @staticmethod
     async def prepare_interview(
         resume: ResumeSchema, 
-        job_description: Optional[str] = None
+        job_description: Optional[str] = None,
+        category: str = "Technical"
     ) -> InterviewPrepSchema:
-        """Generate categorized interview preparation questions and guidelines."""
+        """Generate tailored interview preparation questions for a specific category."""
         provider = LLMProviderFactory.get_provider()
         
         resume_json = resume.model_dump_json(indent=2)
-        jd_text = job_description if job_description else "No target Job Description was provided. Generate general professional questions tailored to candidate's skills and roles."
+        jd_text = job_description if job_description else "No target Job Description was provided."
         
-        prompt = INTERVIEW_PROMPT.format(
-            resume_json=resume_json, 
-            job_description=jd_text
+        prompt = (
+            f"Candidate Resume JSON:\n{resume_json}\n\n"
+            f"Target Job Description:\n{jd_text}\n\n"
+            f"Requested Question Category: {category}\n"
+            f"Strictly generate ONLY interview questions of the category: '{category}'.\n"
+            "Please generate the Interview Preparation Package matching this specific category."
+        )
+        
+        system_instruction = (
+            "You are an expert Technical and Behavioral Interviewer. "
+            "Your objective is to generate an Interview Preparation Package. "
+            f"Create realistic questions strictly for the requested category: '{category}'. "
+            "For each question, specify the type (which must match the requested category), difficulty level, the interviewer's intent, "
+            "a high-quality sample answer, and structured evaluation criteria checklist."
         )
         
         return await anyio.to_thread.run_sync(
             provider.generate_structured_output,
             prompt,
             InterviewPrepSchema,
-            INTERVIEW_SYSTEM_INSTRUCTION
+            system_instruction
         )
+

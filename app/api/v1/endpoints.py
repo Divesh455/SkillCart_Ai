@@ -154,7 +154,8 @@ class EnhanceRequest(BaseModel):
 
 class PrepareInterviewRequest(BaseModel):
     res_id: str
-    job_description: Optional[str] = None
+    job_id: str
+    category: str = Field(..., description="Category: 'Technical', 'HR', 'Behavioral', 'Coding', 'Company'")
 
 
 class GuidanceRequest(BaseModel):
@@ -472,14 +473,56 @@ async def enhance_career_endpoint(req: EnhanceRequest):
 
 @router.post("/interview/prepare", response_model=ApiResponse)
 async def prepare_interview_endpoint(req: PrepareInterviewRequest):
-    """Generate tailored interview prep questions (Technical, HR, behavioral, coding, company)."""
+    """Generate tailored interview prep questions based on category, resume, and job details."""
     resume = resolve_resume(req.res_id)
+    
+    # 1. Parse and validate job_id
+    try:
+        job_id = int(req.job_id.strip())
+    except ValueError:
+        raise SkillCartException(
+            message="'job_id' must be a valid integer.",
+            status_code=400
+        )
+
+    # 2. Fetch job details from Railway API
+    try:
+        job = await anyio.to_thread.run_sync(railway_client.get_job, job_id)
+    except requests.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            raise SkillCartException(
+                message=f"Job with ID '{job_id}' not found.",
+                status_code=404
+            )
+        raise SkillCartException(
+            message=f"Failed to fetch job details for job ID '{job_id}'.",
+            status_code=502,
+            errors=str(exc)
+        )
+    except requests.RequestException as exc:
+        raise SkillCartException(
+            message="Failed to connect to the jobs service.",
+            status_code=502,
+            errors=str(exc)
+        )
+
+    # 3. Build job description string
+    job_description = _build_job_description(job)
+    
+    # 4. Normalize and map the category option
+    category = req.category.strip().title()
+    if category == "Hr":
+        category = "HR"
+    elif category == "Company":
+        category = "Company-Specific"
+
     result = await InterviewIntelligenceService.prepare_interview(
-        resume, req.job_description
+        resume=resume, 
+        job_description=job_description,
+        category=category
     )
-    return success_response(
-        data=result, message="Interview preparation questions generated successfully"
-    )
+    return success_response(data=result, message="Interview preparation questions generated successfully")
+
 
 
 @router.post("/copilot/guidance", response_model=ApiResponse)
