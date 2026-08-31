@@ -18,7 +18,7 @@ class GeminiProvider(BaseLLMProvider):
         self.client = ChatGoogleGenerativeAI(
             model=settings.GEMINI_MODEL,
             google_api_key=settings.GEMINI_API_KEY,
-            temperature=0.1
+            thinking_level="medium"
         )
 
     def generate_text(self, prompt: str, system_instruction: str = None) -> str:
