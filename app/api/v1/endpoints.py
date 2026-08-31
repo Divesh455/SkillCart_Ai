@@ -153,7 +153,7 @@ class EnhanceRequest(BaseModel):
 
 
 class PrepareInterviewRequest(BaseModel):
-    res_id: str
+    res_id: Optional[str]
     job_id: str
     category: str = Field(..., description="Category: 'Technical', 'HR', 'Behavioral', 'Coding', 'Company'")
 
