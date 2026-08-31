@@ -1,4 +1,4 @@
-﻿from typing import Optional, List
+from typing import Optional, List
 import anyio
 import json
 import requests
@@ -153,7 +153,7 @@ class EnhanceRequest(BaseModel):
 
 
 class PrepareInterviewRequest(BaseModel):
-    res_id: Optional[str]
+    res_id: Optional[str] = None
     job_id: str
     category: str = Field(..., description="Category: 'Technical', 'HR', 'Behavioral', 'Coding', 'Company'")
 
@@ -474,7 +474,7 @@ async def enhance_career_endpoint(req: EnhanceRequest):
 @router.post("/interview/prepare", response_model=ApiResponse)
 async def prepare_interview_endpoint(req: PrepareInterviewRequest):
     """Generate tailored interview prep questions based on category, resume, and job details."""
-    resume = resolve_resume(req.res_id)
+    resume = resolve_resume(req.res_id) if req.res_id else None
     
     # 1. Parse and validate job_id
     try:

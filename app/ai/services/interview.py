@@ -8,20 +8,25 @@ from app.ai.prompts.interview import INTERVIEW_SYSTEM_INSTRUCTION, INTERVIEW_PRO
 class InterviewIntelligenceService:
     @staticmethod
     async def prepare_interview(
-        resume: ResumeSchema, 
+        resume: Optional[ResumeSchema] = None, 
         job_description: Optional[str] = None,
         category: str = "Technical"
     ) -> InterviewPrepSchema:
         """Generate tailored interview preparation questions for a specific category."""
         provider = LLMProviderFactory.get_provider()
         
-        # Select only the skills section from the parsed resume data
-        skills_data = [skill.model_dump() for skill in resume.skills]
-        skills_json = json.dumps(skills_data, indent=2)
+        # Select only the skills section if resume is provided
+        if resume:
+            skills_data = [skill.model_dump() for skill in resume.skills]
+            skills_json = json.dumps(skills_data, indent=2)
+            skills_text = f"Candidate Skills JSON:\n{skills_json}\n\n"
+        else:
+            skills_text = ""
+            
         jd_text = job_description if job_description else "No target Job Description was provided."
         
         prompt = (
-            f"Candidate Skills JSON:\n{skills_json}\n\n"
+            f"{skills_text}"
             f"Target Job Description:\n{jd_text}\n\n"
             f"Requested Question Category: {category}\n"
             f"Strictly generate ONLY interview questions of the category: '{category}'.\n"
