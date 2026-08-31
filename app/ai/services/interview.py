@@ -1,4 +1,5 @@
 import anyio
+import json
 from typing import Optional
 from app.ai.providers.factory import LLMProviderFactory
 from app.ai.services.models import ResumeSchema, InterviewPrepSchema
@@ -14,11 +15,13 @@ class InterviewIntelligenceService:
         """Generate tailored interview preparation questions for a specific category."""
         provider = LLMProviderFactory.get_provider()
         
-        resume_json = resume.model_dump_json(indent=2)
+        # Select only the skills section from the parsed resume data
+        skills_data = [skill.model_dump() for skill in resume.skills]
+        skills_json = json.dumps(skills_data, indent=2)
         jd_text = job_description if job_description else "No target Job Description was provided."
         
         prompt = (
-            f"Candidate Resume JSON:\n{resume_json}\n\n"
+            f"Candidate Skills JSON:\n{skills_json}\n\n"
             f"Target Job Description:\n{jd_text}\n\n"
             f"Requested Question Category: {category}\n"
             f"Strictly generate ONLY interview questions of the category: '{category}'.\n"
