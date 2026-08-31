@@ -474,7 +474,12 @@ async def enhance_career_endpoint(req: EnhanceRequest):
 @router.post("/interview/prepare", response_model=ApiResponse)
 async def prepare_interview_endpoint(req: PrepareInterviewRequest):
     """Generate tailored interview prep questions based on category, resume, and job details."""
-    resume = resolve_resume(req.res_id) if req.res_id else None
+    resume = None
+    if req.res_id and req.res_id.strip():
+        try:
+            resume = resolve_resume(req.res_id)
+        except Exception:
+            resume = None
     
     # 1. Parse and validate job_id
     try:

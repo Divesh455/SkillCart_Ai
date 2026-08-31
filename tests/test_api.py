@@ -1,4 +1,4 @@
-﻿from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
 import pytest
 import requests
@@ -508,11 +508,17 @@ def test_enhance_career_endpoint_fetches_ai_response_json(dummy_resume):
 def test_prepare_interview_endpoint(dummy_resume):
     mock_prep = InterviewPrepSchema(questions=[])
     with patch("app.api.v1.endpoints.get_resume_data", return_value=dummy_resume.model_dump(mode="json")), \
+         patch("app.api.v1.endpoints.railway_client.get_job", return_value={
+             "id": 1,
+             "job_title": "Software Engineer",
+             "company": {"company_name": "BluepeakVentures Limited", "description": "Telecommunications"}
+         }), \
          patch("app.api.v1.endpoints.InterviewIntelligenceService.prepare_interview", return_value=mock_prep) as mock_prep_service:
          
         payload = {
             "res_id": "dummy-uuid-1234",
-            "job_description": "Senior Python Developer"
+            "job_id": "1",
+            "category": "Technical"
         }
         response = client.post("/api/v1/interview/prepare", json=payload)
         assert response.status_code == 200
@@ -520,6 +526,52 @@ def test_prepare_interview_endpoint(dummy_resume):
         assert json_data["success"] is True
         assert "questions" in json_data["data"]
         mock_prep_service.assert_called_once()
+
+
+def test_prepare_interview_endpoint_optional_res_id():
+    mock_prep = InterviewPrepSchema(questions=[])
+    with patch("app.api.v1.endpoints.railway_client.get_job", return_value={
+             "id": 1,
+             "job_title": "Software Engineer",
+             "company": {"company_name": "BluepeakVentures Limited", "description": "Telecommunications"}
+         }), \
+         patch("app.api.v1.endpoints.InterviewIntelligenceService.prepare_interview", return_value=mock_prep) as mock_prep_service:
+         
+        payload = {
+            "job_id": "1",
+            "category": "Technical"
+        }
+        response = client.post("/api/v1/interview/prepare", json=payload)
+        assert response.status_code == 200
+        json_data = response.json()
+        assert json_data["success"] is True
+        assert "questions" in json_data["data"]
+        mock_prep_service.assert_called_once()
+
+
+def test_prepare_interview_endpoint_wrong_res_id():
+    mock_prep = InterviewPrepSchema(questions=[])
+    with patch("app.api.v1.endpoints.get_resume_ai_response_data", side_effect=Exception("Database error")), \
+         patch("app.api.v1.endpoints.railway_client.get_job", return_value={
+             "id": 1,
+             "job_title": "Software Engineer",
+             "company": {"company_name": "BluepeakVentures Limited", "description": "Telecommunications"}
+         }), \
+         patch("app.api.v1.endpoints.InterviewIntelligenceService.prepare_interview", return_value=mock_prep) as mock_prep_service:
+         
+        payload = {
+            "res_id": "wrong-id",
+            "job_id": "1",
+            "category": "Technical"
+        }
+        response = client.post("/api/v1/interview/prepare", json=payload)
+        assert response.status_code == 200
+        json_data = response.json()
+        assert json_data["success"] is True
+        assert "questions" in json_data["data"]
+        mock_prep_service.assert_called_once()
+        _, kwargs = mock_prep_service.call_args
+        assert kwargs.get("resume") is None
 
 
 def test_guidance_endpoint(dummy_resume, dummy_evaluation):
