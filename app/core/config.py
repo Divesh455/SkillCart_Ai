@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = Field(default="")
     GROQ_API_KEY: str = Field(default="")
     LLM_PROVIDER: str = Field(default="gemini")  # "gemini" or "groq"
-    GEMINI_MODEL: str = Field(default="gemini-3.6-flash")
+    GEMINI_MODEL: str = Field(default="gemini-2.5-flash")
     GROQ_MODEL: str = Field(default="llama-3.3-70b-versatile")
     HOST: str = Field(default="0.0.0.0")
     PORT: int = Field(default=8000)
