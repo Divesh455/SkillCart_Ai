@@ -55,11 +55,10 @@ router = APIRouter()
 
 
 def resolve_resume(res_id: str) -> ResumeSchema:
-    """Resolve ResumeSchema from database res_id."""
+    """Resolve ResumeSchema from Resume AI database res_id."""
     if not res_id:
         raise SkillCartException(message="'res_id' must be provided.", status_code=400)
 
-    is_numeric_resume_id = str(res_id).strip().isdigit()
     try:
         data = get_resume_ai_response_data(res_id)
     except ValueError as e:
@@ -74,9 +73,6 @@ def resolve_resume(res_id: str) -> ResumeSchema:
             status_code=502,
             errors=str(e),
         )
-
-    if data is None and not is_numeric_resume_id:
-        data = get_resume_data(res_id)
 
     if not data:
         raise SkillCartException(
@@ -93,39 +89,29 @@ def resolve_resume(res_id: str) -> ResumeSchema:
 
 
 def resolve_generated_resume(res_id: str) -> GenResumeSchema:
-    """Resolve GenResumeSchema from database res_id."""
+    """Resolve GenResumeSchema from generated resume database (Aiven)."""
     if not res_id:
         raise SkillCartException(message="'res_id' must be provided.", status_code=400)
 
-    is_numeric_resume_id = str(res_id).strip().isdigit()
     try:
-        data = get_resume_ai_response_data(res_id)
-    except ValueError as e:
-        raise SkillCartException(
-            message="Resume AI database is not configured.",
-            status_code=500,
-            errors=str(e),
-        )
+        data = get_resume_data(res_id)
     except Exception as e:
         raise SkillCartException(
-            message=f"Failed to fetch resume AI data for ID '{res_id}'.",
+            message=f"Failed to fetch generated resume data for ID '{res_id}'.",
             status_code=502,
             errors=str(e),
         )
 
-    if data is None and not is_numeric_resume_id:
-        data = get_resume_data(res_id)
-
     if not data:
         raise SkillCartException(
-            message=f"Resume with ID '{res_id}' not found in the database.",
+            message=f"Generated resume with ID '{res_id}' not found in the database.",
             status_code=404,
         )
     try:
         return GenResumeSchema(**data)
     except Exception as e:
         raise SkillCartException(
-            message=f"Failed to parse database resume data for ID '{res_id}': {str(e)}",
+            message=f"Failed to parse generated resume data for ID '{res_id}': {str(e)}",
             status_code=422,
         )
 
@@ -549,8 +535,6 @@ async def chat_endpoint(req: ChatRequest):
     if req.res_id:
         try:
             resume_data = get_resume_ai_response_data(req.res_id)
-            if not resume_data:
-                resume_data = get_resume_data(req.res_id)
         except Exception:
             # Gracefully ignore any DB lookup errors and proceed without resume context
             resume_data = None

@@ -212,7 +212,7 @@ def test_download_resume_endpoint_not_found():
     assert "not found in the database" in json_data["message"]
 
 def test_evaluate_resume_by_res_id_endpoint(dummy_resume, dummy_evaluation):
-    with patch("app.api.v1.endpoints.get_resume_data", return_value=dummy_resume.model_dump(mode="json")) as mock_get_db, \
+    with patch("app.api.v1.endpoints.get_resume_ai_response_data", return_value=dummy_resume.model_dump(mode="json")) as mock_get_db, \
          patch("app.api.v1.endpoints.railway_client.get_job", return_value={
              "id": 1,
              "job_title": "Software Engineer",
@@ -271,7 +271,7 @@ def test_evaluate_resume_endpoint_missing_parameters():
     assert "validation failed" in json_data["message"].lower()
 
 def test_evaluate_resume_endpoint_not_found_in_db():
-    with patch("app.api.v1.endpoints.get_resume_data", return_value=None) as mock_get_db:
+    with patch("app.api.v1.endpoints.get_resume_ai_response_data", return_value=None) as mock_get_db:
         payload = {
             "res_id": "nonexistent-uuid",
             "job_id": "1"
@@ -287,7 +287,7 @@ def test_evaluate_resume_endpoint_job_not_found(dummy_resume):
     mock_response.status_code = 404
     http_error = requests.HTTPError(response=mock_response)
 
-    with patch("app.api.v1.endpoints.get_resume_data", return_value=dummy_resume.model_dump(mode="json")), \
+    with patch("app.api.v1.endpoints.get_resume_ai_response_data", return_value=dummy_resume.model_dump(mode="json")), \
          patch("app.api.v1.endpoints.railway_client.get_job", side_effect=http_error):
         response = client.post(
             "/api/v1/resume/evaluate",
@@ -410,7 +410,7 @@ def test_match_career_endpoint(dummy_resume):
         "recommended_jobs": [{"id": 101, "title": "Python Developer"}],
         "total": 1
     }
-    with patch("app.api.v1.endpoints.get_resume_data", return_value=dummy_resume.model_dump(mode="json")), \
+    with patch("app.api.v1.endpoints.get_resume_ai_response_data", return_value=dummy_resume.model_dump(mode="json")), \
          patch("app.api.v1.endpoints.CareerMatchingService.match_career", return_value=mock_result) as mock_match:
          
         payload = {
@@ -447,7 +447,7 @@ def test_enhance_career_endpoint(dummy_resume):
         skill_gaps=[],
         summary="Matches target role"
     )
-    with patch("app.api.v1.endpoints.get_resume_data", return_value=dummy_resume.model_dump(mode="json")), \
+    with patch("app.api.v1.endpoints.get_resume_ai_response_data", return_value=dummy_resume.model_dump(mode="json")), \
          patch("app.api.v1.endpoints.CareerEnhancementService.enhance_career", return_value=mock_enhance) as mock_enhance_service:
          
         payload = {
@@ -507,7 +507,7 @@ def test_enhance_career_endpoint_fetches_ai_response_json(dummy_resume):
 
 def test_prepare_interview_endpoint(dummy_resume):
     mock_prep = InterviewPrepSchema(questions=[])
-    with patch("app.api.v1.endpoints.get_resume_data", return_value=dummy_resume.model_dump(mode="json")), \
+    with patch("app.api.v1.endpoints.get_resume_ai_response_data", return_value=dummy_resume.model_dump(mode="json")), \
          patch("app.api.v1.endpoints.railway_client.get_job", return_value={
              "id": 1,
              "job_title": "Software Engineer",
@@ -597,7 +597,7 @@ def test_guidance_endpoint(dummy_resume, dummy_evaluation):
         skill_gaps=[],
         summary="Matches target role"
     )
-    with patch("app.api.v1.endpoints.get_resume_data", return_value=dummy_resume.model_dump(mode="json")), \
+    with patch("app.api.v1.endpoints.get_resume_ai_response_data", return_value=dummy_resume.model_dump(mode="json")), \
          patch("app.api.v1.endpoints.CareerCopilotService.generate_guidance", return_value=mock_guidance) as mock_guidance_service:
          
         payload = {
@@ -632,7 +632,7 @@ def test_chat_endpoint(dummy_resume):
         skill_gaps=[],
         summary="Matches target role"
     )
-    with patch("app.api.v1.endpoints.get_resume_data", return_value=dummy_resume.model_dump(mode="json")), \
+    with patch("app.api.v1.endpoints.get_resume_ai_response_data", return_value=dummy_resume.model_dump(mode="json")), \
          patch("app.api.v1.endpoints.CareerCopilotService.chat", return_value=mock_chat_response) as mock_chat_service:
          
         payload = {
